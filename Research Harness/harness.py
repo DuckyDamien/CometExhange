@@ -76,6 +76,17 @@ def _hedge_imbalance(position):
     return max(abs(position.get(symbol, 0) + kit) for symbol in COMPONENTS)
 
 
+def _basket_decomposition(position):
+    implied = [position.get(KIT, 0)]
+    implied.extend(-position.get(symbol, 0) for symbol in COMPONENTS)
+    baskets = int(round(median(implied)))
+    residual = dict(position)
+    residual[KIT] -= baskets
+    for symbol in COMPONENTS:
+        residual[symbol] += baskets
+    return baskets, residual
+
+
 def _equities(cash, position, mids, visible):
     mid_equity = sum(cash[p] + position[p] * mids[p] for p in position)
     liquidation = sum(cash.values())
@@ -89,13 +100,7 @@ def _equities(cash, position, mids, visible):
             price = 0.0
         liquidation += quantity * price
 
-    implied = [position.get(KIT, 0)]
-    implied.extend(-position.get(symbol, 0) for symbol in COMPONENTS)
-    baskets = int(round(median(implied)))
-    residual_positions = dict(position)
-    residual_positions[KIT] -= baskets
-    for symbol in COMPONENTS:
-        residual_positions[symbol] += baskets
+    baskets, residual_positions = _basket_decomposition(position)
     structural = sum(cash.values()) + sum(
         residual_positions[symbol] * mids[symbol] for symbol in residual_positions
     )
@@ -263,6 +268,8 @@ def replay(
             )
             for mine, side_prints, buying in sides:
                 for resting in mine:
+                    if not scenario.allows_resting_fill(symbol, absolute_index, buying):
+                        continue
                     for trade in side_prints:
                         if resting[1] == 0:
                             break
@@ -306,6 +313,7 @@ def replay(
         mid_equity, liquidation_equity, structural_equity = _equities(
             cash, position, last_mid, visible
         )
+        basket_position, residual_positions = _basket_decomposition(position)
         residual = last_mid[KIT] - sum(last_mid[symbol] for symbol in COMPONENTS)
         bids = {s: visible[s][0][0][0] if visible[s][0] else None for s in (KIT,) + COMPONENTS}
         asks = {s: visible[s][1][0][0] if visible[s][1] else None for s in (KIT,) + COMPONENTS}
@@ -335,9 +343,13 @@ def replay(
                 "rich_edge": rich_edge,
                 "executed_edge": executed_edge,
                 "kit_position": position[KIT],
+                "basket_position": basket_position,
                 "glass_position": position["TELESCOPE_GLASS"],
                 "pills_position": position["COMET_PILLS"],
                 "masks_position": position["GAS_MASKS"],
+                "residual_glass_position": residual_positions["TELESCOPE_GLASS"],
+                "residual_pills_position": residual_positions["COMET_PILLS"],
+                "residual_masks_position": residual_positions["GAS_MASKS"],
                 "hedge_imbalance": _hedge_imbalance(position),
                 "tick_turnover": tick_turnover,
                 "tick_fills": tick_fills,

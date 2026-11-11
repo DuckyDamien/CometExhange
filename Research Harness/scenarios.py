@@ -15,6 +15,7 @@ class Scenario:
     missing_side: str = ""
     missing_side_every: int = 0
     restart_every: int = 0
+    resting_fill_rate: float = 1.0
 
     def drops_fill(self, symbol, tick_index):
         return bool(
@@ -22,6 +23,17 @@ class Scenario:
             and self.drop_every > 0
             and tick_index % self.drop_every == 0
         )
+
+    def allows_resting_fill(self, symbol, tick_index, buying):
+        rate = max(0.0, min(1.0, self.resting_fill_rate))
+        if rate >= 1.0:
+            return True
+        if rate <= 0.0:
+            return False
+        symbol_code = sum((index + 1) * ord(char) for index, char in enumerate(symbol))
+        side_code = 17 if buying else 43
+        value = (tick_index * 1103515245 + symbol_code * 12345 + side_code) & 0x7FFFFFFF
+        return value / 0x80000000 < rate
 
 
 BASE = Scenario()
@@ -44,6 +56,9 @@ def standard_stresses():
             missing_side_every=500,
         ),
         Scenario(name="restart_every_2000", restart_every=2000),
+        Scenario(name="resting_fills_75pct", resting_fill_rate=0.75),
+        Scenario(name="resting_fills_50pct", resting_fill_rate=0.50),
+        Scenario(name="resting_fills_25pct", resting_fill_rate=0.25),
     ]
 
 

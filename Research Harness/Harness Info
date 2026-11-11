@@ -1,0 +1,28 @@
+# Research harness
+
+These tools are for local research only. Do not include the `research` folder
+in the single-file competition submission.
+
+## Detailed replay
+
+```powershell
+python -m research.harness trader_v2.py --day all --output research/reports/trader_v2_ticks
+```
+
+This produces tick-level midpoint, liquidation, and structural equity; basket
+residuals; executable edges; positions; hedge imbalance; turnover; and fills.
+
+## Experiment suites
+
+```powershell
+python -m research.experiments trader_v2.py --suite quick
+python -m research.experiments trader_v2.py --suite full
+```
+
+The quick suite runs feature ablations and deterministic stresses. The full
+suite adds parameter-neighborhood tests and purged walk-forward validation.
+Generated reports are written under `research/reports/<trader name>/`.
+
+The harness does not turn two public days into genuine out-of-sample data.
+Its purpose is to expose fragility, compare nearby choices, and make each
+research decision reproducible.

@@ -14,6 +14,8 @@ MASKS = "GAS_MASKS"
 POLICY = "CALM_WEATHER_POLICIES"
 WARRANT = "PILL_WARRANTS"
 WARRANT_STRIKE = 1200.0
+PILLS_TAKE = True
+PILLS_TAKE_EXTRA = 1
 WARRANT_EDGE = 10.0
 # Sessions open 3.0 or 2.0 days before expiry; the date is unknown to the trader and
 # does not change the trades (checked with the correct and the wrong date).
@@ -408,6 +410,11 @@ class PortfolioV7:
                 bid + 1,
             )
 
+            if symbol == PILLS and PILLS_TAKE:
+                if math.floor(reservation - config["edge"] - PILLS_TAKE_EXTRA) >= ask:
+                    quote_bid = ask
+                if math.ceil(reservation + config["edge"] + PILLS_TAKE_EXTRA) <= bid:
+                    quote_ask = bid
             actual = self._position(state, symbol)
             basket_quantity = int(planned.get(symbol, 0))
             buy_capacity = (
